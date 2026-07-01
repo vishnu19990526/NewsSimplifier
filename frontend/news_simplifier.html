@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>News Simplifier</title>
+<style>
+  :root{
+    --board:#1f3a2e;
+    --board-2:#234534;
+    --chalk:#f5f2e8;
+    --chalk-dim:#cfd6c9;
+    --highlighter:#f4c430;
+    --coral:#e8674a;
+    --rule:#6b8770;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--board);
+    color:var(--chalk);
+    font-family:'Atkinson Hyperlegible', Verdana, Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  @font-face{
+    font-family:'Atkinson Hyperlegible';
+    src:local('Atkinson Hyperlegible');
+  }
+  .wrap{
+    max-width:720px;
+    margin:0 auto;
+    padding:32px 20px 60px;
+  }
+  .eyebrow{
+    font-family:'Courier New', monospace;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    font-size:11px;
+    color:var(--chalk-dim);
+    border:1px solid var(--rule);
+    display:inline-block;
+    padding:3px 8px;
+    border-radius:3px;
+  }
+  h1.title{
+    font-family:'Trebuchet MS', 'Segoe UI', sans-serif;
+    font-weight:800;
+    font-size:34px;
+    line-height:1.15;
+    margin:14px 0 4px;
+    position:relative;
+    display:inline-block;
+  }
+  h1.title .hl{
+    background:linear-gradient(transparent 60%, var(--highlighter) 60%);
+    color:#1f2a1f;
+    padding:0 2px;
+  }
+  p.sub{
+    color:var(--chalk-dim);
+    margin:0 0 26px;
+    font-size:15px;
+    max-width:46ch;
+  }
+  .desk{
+    background:var(--board-2);
+    border:1px solid var(--rule);
+    border-radius:10px;
+    padding:20px;
+  }
+  .row{
+    display:flex;
+    gap:10px;
+  }
+  input[type=text]{
+    flex:1;
+    background:transparent;
+    border:none;
+    border-bottom:2px dashed var(--rule);
+    color:var(--chalk);
+    font-size:16px;
+    font-family:inherit;
+    padding:10px 4px;
+    outline:none;
+  }
+  input[type=text]::placeholder{ color:#9fae98; }
+  input[type=text]:focus{ border-bottom-color:var(--highlighter); }
+  button{
+    background:var(--highlighter);
+    color:#1f2a1f;
+    border:none;
+    font-weight:800;
+    font-size:14px;
+    padding:0 18px;
+    border-radius:6px;
+    cursor:pointer;
+    font-family:inherit;
+    transition:transform .12s ease;
+  }
+  button:hover{ transform:translateY(-1px); }
+  button:disabled{ background:#a89a6a; cursor:wait; transform:none; }
+  button:focus-visible, input:focus-visible{ outline:2px solid var(--coral); outline-offset:2px; }
+
+  .meter{
+    margin-top:16px;
+    display:none;
+  }
+  .meter.active{ display:block; }
+  .meter-track{
+    height:8px;
+    background:#16291f;
+    border-radius:5px;
+    overflow:hidden;
+  }
+  .meter-fill{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg, var(--coral), var(--highlighter));
+    border-radius:5px;
+    transition:width .4s ease;
+  }
+  .meter-label{
+    font-size:12px;
+    color:var(--chalk-dim);
+    margin-top:6px;
+    font-family:'Courier New', monospace;
+    display:flex;
+    justify-content:space-between;
+  }
+
+  .error{
+    margin-top:14px;
+    background:#3a2020;
+    border:1px solid var(--coral);
+    color:#ffd9cd;
+    padding:10px 12px;
+    border-radius:6px;
+    font-size:13px;
+    display:none;
+  }
+  .error.show{ display:block; }
+
+  .result{
+    margin-top:28px;
+    display:none;
+  }
+  .result.show{ display:block; animation:rise .35s ease; }
+  @keyframes rise{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
+
+  .card{
+    background:var(--chalk);
+    color:#1f2a1f;
+    border-radius:10px;
+    padding:22px 24px;
+    margin-bottom:16px;
+    box-shadow:0 8px 18px rgba(0,0,0,.25);
+  }
+  .card.headline{
+    background:var(--chalk);
+    border-left:6px solid var(--highlighter);
+  }
+  .card.summary{ border-left:6px solid var(--coral); }
+  .card.points{ border-left:6px solid var(--rule); }
+  .card.why{
+    background:#2a4636;
+    color:var(--chalk);
+    border-left:6px solid var(--highlighter);
+  }
+  .card.oneline{
+    background:#16291f;
+    color:var(--highlighter);
+    text-align:center;
+    font-weight:800;
+    border-left:none;
+  }
+  .tag{
+    font-family:'Courier New', monospace;
+    text-transform:uppercase;
+    font-size:11px;
+    letter-spacing:.1em;
+    opacity:.6;
+    display:block;
+    margin-bottom:6px;
+  }
+  .card h2{
+    margin:0 0 8px;
+    font-size:22px;
+    font-weight:800;
+  }
+  .card p{ margin:0; line-height:1.55; font-size:15px; }
+  .card ul{ margin:6px 0 0; padding-left:20px; }
+  .card li{ margin-bottom:6px; line-height:1.45; font-size:15px; }
+
+  .meta-note{
+    font-size:11px;
+    color:var(--chalk-dim);
+    margin-top:10px;
+    text-align:center;
+  }
+  .key-status{
+    font-size:12px;
+    color:var(--chalk-dim);
+    margin-top:8px;
+    font-family:'Courier New', monospace;
+  }
+  .key-status.ok{ color:var(--highlighter); }
+  .key-status a{
+    color:var(--coral);
+    text-decoration:underline;
+    cursor:pointer;
+    margin-left:10px;
+  }
+  .audio-bar{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:18px;
+  }
+  .audio-btn{
+    background:var(--coral);
+    color:#1f2a1f;
+    border:none;
+    font-weight:800;
+    font-size:14px;
+    padding:9px 16px;
+    border-radius:6px;
+    cursor:pointer;
+    font-family:inherit;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .audio-btn.playing{ background:var(--highlighter); }
+  .audio-hint{
+    font-size:12px;
+    color:var(--chalk-dim);
+  }
+
+  .categories{ margin-top:28px; }
+  .cat-heading{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--chalk-dim);
+    font-family:'Courier New', monospace;
+    margin-bottom:10px;
+  }
+  .cat-tabs{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .cat-tab{
+    background:transparent;
+    color:var(--chalk);
+    border:1px solid var(--rule);
+    font-weight:700;
+    font-size:13px;
+    padding:8px 14px;
+    border-radius:20px;
+    cursor:pointer;
+    font-family:inherit;
+    transition:all .15s ease;
+  }
+  .cat-tab:hover{ border-color:var(--highlighter); transform:none; }
+  .cat-tab.active{
+    background:var(--highlighter);
+    color:#1f2a1f;
+    border-color:var(--highlighter);
+  }
+  .cat-meter{ display:none; margin-bottom:10px; }
+  .cat-meter.active{ display:block; }
+  .cat-error{
+    background:#3a2020;
+    border:1px solid var(--coral);
+    color:#ffd9cd;
+    padding:10px 12px;
+    border-radius:6px;
+    font-size:13px;
+    display:none;
+    margin-bottom:10px;
+  }
+  .cat-error.show{ display:block; }
+  .cat-placeholder{
+    color:var(--chalk-dim);
+    font-size:14px;
+  }
+  .cat-content-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .cat-content-header h3{
+    margin:0;
+    font-size:16px;
+    color:var(--chalk);
+  }
+  .cat-refresh{
+    background:transparent;
+    border:none;
+    color:var(--chalk-dim);
+    font-size:12px;
+    text-decoration:underline;
+    cursor:pointer;
+    padding:0;
+    font-family:inherit;
+  }
+  .cat-list{
+    background:var(--chalk);
+    color:#1f2a1f;
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .cat-item{
+    display:flex;
+    gap:12px;
+    padding:14px 18px;
+    border-bottom:1px solid #ddd7c4;
+  }
+  .cat-item:last-child{ border-bottom:none; }
+  .cat-num{
+    font-family:'Courier New', monospace;
+    font-weight:800;
+    color:var(--coral);
+    font-size:14px;
+    flex-shrink:0;
+    width:18px;
+  }
+  .cat-item h4{
+    margin:0 0 4px;
+    font-size:15px;
+    font-weight:800;
+  }
+  .cat-item p{
+    margin:0;
+    font-size:13.5px;
+    line-height:1.45;
+    color:#3a4338;
+  }
+  .cat-listen{
+    margin-bottom:10px;
+  }
+  .voice-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:14px;
+  }
+  .voice-label{
+    font-size:12px;
+    color:var(--chalk-dim);
+    font-family:'Courier New', monospace;
+  }
+  #voiceSelect{
+    flex:1;
+    background:var(--board);
+    color:var(--chalk);
+    border:1px solid var(--rule);
+    border-radius:6px;
+    padding:6px 8px;
+    font-size:13px;
+    font-family:inherit;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="eyebrow">Tool</span>
+  <h1 class="title">News, <span class="hl">simplified</span>.</h1>
+  <p class="sub">Paste a link to a news article. Get back the same facts, in plain English a 12-year-old can follow.</p>
+  <p class="meta-note" style="margin-top:-6px; margin-bottom:18px; text-align:left;">Powered by a backend that caches results — most requests are instant and don't call Claude at all.</p>
+
+  <div class="desk">
+    <div class="row">
+      <input id="url" type="text" placeholder="https://example.com/news-article" autocomplete="off" />
+      <button id="go">Simplify it</button>
+    </div>
+
+    <div class="meter" id="meter">
+      <div class="meter-track"><div class="meter-fill" id="meterFill"></div></div>
+      <div class="meter-label"><span id="meterStage">Reading the page&hellip;</span><span id="meterLevel">Adult</span></div>
+    </div>
+
+    <div class="error" id="error"></div>
+
+    <div class="voice-row">
+      <label for="voiceSelect" class="voice-label">Voice:</label>
+      <select id="voiceSelect"></select>
+    </div>
+  </div>
+
+  <div class="result" id="result"></div>
+
+  <div class="categories">
+    <div class="cat-heading">Today's top stories, simplified</div>
+    <div class="cat-tabs" id="catTabs">
+      <button class="cat-tab" data-cat="global">&#127760; Top Global</button>
+      <button class="cat-tab" data-cat="tamilnadu">&#128205; Tamil Nadu</button>
+      <button class="cat-tab" data-cat="sports">&#127942; Sports</button>
+      <button class="cat-tab" data-cat="economy">&#128200; Economic</button>
+      <button class="cat-tab" data-cat="business">&#128188; Business</button>
+    </div>
+
+    <div class="cat-meter" id="catMeter">
+      <div class="meter-track"><div class="meter-fill" id="catMeterFill"></div></div>
+      <div class="meter-label"><span id="catMeterStage">Finding today's stories&hellip;</span><span></span></div>
+    </div>
+
+    <div class="cat-error" id="catError"></div>
+
+    <div id="catContent">
+      <p class="cat-placeholder">Pick a category above to see today's top 5 stories, simplified.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const urlInput = document.getElementById('url');
+const goBtn = document.getElementById('go');
+const meter = document.getElementById('meter');
+const meterFill = document.getElementById('meterFill');
+const meterStage = document.getElementById('meterStage');
+const meterLevel = document.getElementById('meterLevel');
+const errorBox = document.getElementById('error');
+const resultBox = document.getElementById('result');
+
+// ====== SET THIS to your backend server's URL ======
+// Running locally with `npm start` in the backend folder -> http://localhost:3000
+const BACKEND_URL = window.location.origin;
+// =====================================================
+
+function setStage(pct, label){
+  meterFill.style.width = pct + '%';
+  meterStage.textContent = label;
+  meterLevel.textContent = pct < 100 ? 'Adult' : 'Kid';
+}
+
+function showError(msg){
+  errorBox.textContent = msg;
+  errorBox.classList.add('show');
+}
+
+function clearError(){
+  errorBox.classList.remove('show');
+  errorBox.textContent = '';
+}
+
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ---------- Voice picker ----------
+const voiceSelect = document.getElementById('voiceSelect');
+let availableVoices = [];
+
+function scoreVoice(v){
+  // Heuristic: prefer voices more likely to sound natural over default robotic ones.
+  let score = 0;
+  const name = v.name.toLowerCase();
+  if(name.includes('natural')) score += 5;
+  if(name.includes('neural')) score += 5;
+  if(name.includes('google')) score += 3;
+  if(name.includes('online')) score += 2;
+  if(name.includes('siri')) score += 4;
+  if(name.includes('samantha') || name.includes('daniel') || name.includes('karen') || name.includes('moira')) score += 2;
+  if(v.lang.startsWith('en')) score += 1;
+  if(v.localService === false) score += 1; // cloud voices are often higher quality
+  return score;
+}
+
+function populateVoices(){
+availableVoices = speechSynthesis.getVoices().filter(v =>
+    !v.name.includes("Online") &&
+    !v.name.includes("Natural") &&
+    !v.name.includes("Multilingual")
+);  if(!availableVoices.length) return;
+
+  const sorted = [...availableVoices].sort((a,b) => scoreVoice(b) - scoreVoice(a));
+  voiceSelect.innerHTML = sorted.map((v, i) =>
+    `<option value="${availableVoices.indexOf(v)}">${escapeHtml(v.name)} (${v.lang})</option>`
+  ).join('');
+
+  const savedIdx = localStorage.getItem('newsSimplifierVoiceIdx');
+  if(savedIdx !== null && availableVoices[savedIdx]){
+    voiceSelect.value = savedIdx;
+  } else {
+    voiceSelect.value = availableVoices.indexOf(sorted[0]);
+  }
+}
+
+if('speechSynthesis' in window){
+  populateVoices();
+  window.speechSynthesis.onvoiceschanged = populateVoices;
+}
+
+voiceSelect.addEventListener('change', () => {
+  localStorage.setItem('newsSimplifierVoiceIdx', voiceSelect.value);
+});
+
+let activeAudioBtn = null;
+
+function stopSpeaking() {
+    speechSynthesis.cancel();
+
+    if (activeAudioBtn) {
+        activeAudioBtn.classList.remove("playing");
+        activeAudioBtn.textContent = activeAudioBtn.dataset.idleLabel || "🔊 Listen";
+    }
+
+    activeAudioBtn = null;
+}
+
+
+ let currentUtterance = null;
+
+function toggleSpeak(fullText, btnEl, idleLabel) {
+
+    // If already speaking, stop it
+    if (speechSynthesis.speaking) {
+        speechSynthesis.cancel();
+        return;
+    }
+
+    currentUtterance = new SpeechSynthesisUtterance(fullText);
+
+    const chosenIdx = Number(voiceSelect.value);
+
+    if (!isNaN(chosenIdx) && availableVoices[chosenIdx]) {
+        currentUtterance.voice = availableVoices[chosenIdx];
+    }
+
+    currentUtterance.rate = 1;
+    currentUtterance.pitch = 1;
+
+    btnEl.textContent = "⏹ Stop";
+
+    currentUtterance.onend = () => {
+        btnEl.textContent = idleLabel;
+    };
+
+    currentUtterance.onerror = () => {
+        btnEl.textContent = idleLabel;
+    };
+
+    speechSynthesis.speak(currentUtterance);
+}
+
+function renderResult(markdown){
+  // Parse our known fixed sections out of the markdown
+  const sections = {};
+  const parts = markdown.split(/^#\s+/m).filter(Boolean);
+  parts.forEach(p => {
+    const lines = p.split('\n');
+    const title = lines.shift().trim().toLowerCase();
+    sections[title] = lines.join('\n').trim();
+  });
+
+  const headline = sections['headline'] || 'Summary';
+  const summary = sections['summary'] || '';
+  const why = sections['why it matters'] || '';
+  const oneLine = sections['one-line version'] || '';
+  const pointsRaw = sections['key points'] || '';
+  const points = pointsRaw.split('\n')
+    .map(l => l.replace(/^-+\s*/, '').trim())
+    .filter(Boolean);
+
+  let html = '';
+  html += `<div class="audio-bar"><button class="audio-btn" id="audioBtn"> Listen to this</button><span class="audio-hint">Hear the headline, summary and why it matters read aloud.</span></div>`;
+  html += `<div class="card headline"><span class="tag">Headline</span><h2>${escapeHtml(headline)}</h2></div>`;
+  html += `<div class="card summary"><span class="tag">Summary</span><p>${escapeHtml(summary)}</p></div>`;
+  if(points.length){
+    html += `<div class="card points"><span class="tag">Key Points</span><ul>${points.map(pt=>`<li>${escapeHtml(pt)}</li>`).join('')}</ul></div>`;
+  }
+  if(why){
+    html += `<div class="card why"><span class="tag">Why It Matters</span><p>${escapeHtml(why)}</p></div>`;
+  }
+  if(oneLine){
+    html += `<div class="card oneline"><span class="tag">One-Line Version</span><p>${escapeHtml(oneLine)}</p></div>`;
+  }
+
+  resultBox.innerHTML = html;
+  resultBox.classList.add('show');
+
+  const spokenText = [headline, summary, points.length ? ('Key points. ' + points.join('. ')) : '', why ? ('Why it matters. ' + why) : '']
+    .filter(Boolean)
+    .join('. ');
+
+  const audioBtn = document.getElementById('audioBtn');
+  if(audioBtn){
+    audioBtn.addEventListener('click', () => toggleSpeak(spokenText, audioBtn, ' Listen to this'));
+  }
+}
+
+async function simplify(){
+  const url = urlInput.value.trim();
+  clearError();
+  stopSpeaking();
+  resultBox.classList.remove('show');
+  resultBox.innerHTML = '';
+
+  if(!url){
+    showError('Paste a news article link first.');
+    return;
+  }
+  let parsed;
+  try{ parsed = new URL(url); }catch(e){
+    showError('That does not look like a valid URL. Include https://');
+    return;
+  }
+
+  goBtn.disabled = true;
+  meter.classList.add('active');
+  setStage(15, 'Reading the page…');
+
+  try{
+    const stageTimer = setTimeout(()=> setStage(45, 'Pulling out the facts…'), 1200);
+    const stageTimer2 = setTimeout(()=> setStage(75, 'Rewriting in plain English…'), 3200);
+
+    const response = await fetch(`${BACKEND_URL}/api/article`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+
+    clearTimeout(stageTimer);
+    clearTimeout(stageTimer2);
+
+    if(!response.ok){
+      const errBody = await response.json().catch(()=>({}));
+      throw new Error(errBody.error || ('Request failed (' + response.status + ')'));
+    }
+
+    const data = await response.json();
+    let combined = (data.markdown || '').trim();
+
+    if(!combined){
+      throw new Error('No summary came back. Try a different link.');
+    }
+
+    setStage(100, 'Done!');
+    setTimeout(()=>{
+      meter.classList.remove('active');
+      renderResult(combined);
+    }, 350);
+
+  }catch(err){
+    meter.classList.remove('active');
+    showError('Could not simplify that page. ' + (err.message || 'Please try again.'));
+  }finally{
+    goBtn.disabled = false;
+  }
+}
+
+goBtn.addEventListener('click', simplify);
+urlInput.addEventListener('keydown', e => { if(e.key === 'Enter') simplify(); });
+
+// ---------- Today's top stories by category ----------
+
+const CATEGORIES = {
+  global: { label: 'Top Global News', topic: 'world / international news' },
+  tamilnadu: { label: 'Top Tamil Nadu News', topic: 'Tamil Nadu, India state and local news' },
+  sports: { label: 'Sports News', topic: 'sports news (cricket, football, and other major sports)' },
+  economy: { label: 'Economic News', topic: 'economic news (markets, inflation, policy, jobs)' },
+  business: { label: 'Business News', topic: 'business and company news' }
+};
+
+const catTabs = document.querySelectorAll('.cat-tab');
+const catMeter = document.getElementById('catMeter');
+const catMeterFill = document.getElementById('catMeterFill');
+const catMeterStage = document.getElementById('catMeterStage');
+const catError = document.getElementById('catError');
+const catContent = document.getElementById('catContent');
+
+const categoryCache = {};
+let activeCatKey = null;
+
+function todayKey(){
+  return new Date().toDateString();
+}
+
+function todayLong(){
+  return new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+
+function showCatError(msg){
+  catError.textContent = msg;
+  catError.classList.add('show');
+}
+function clearCatError(){
+  catError.classList.remove('show');
+  catError.textContent = '';
+}
+
+function setCatStage(pct, label){
+  catMeterFill.style.width = pct + '%';
+  catMeterStage.textContent = label;
+}
+
+function renderCategory(catKey, items){
+  const meta = CATEGORIES[catKey];
+  let html = `<div class="cat-content-header"><h3>${escapeHtml(meta.label)} — ${escapeHtml(todayLong())}</h3><button class="cat-refresh" id="catRefresh">&#8635; Refresh</button></div>`;
+  html += `<div class="cat-listen"><button class="audio-btn" id="catAudioBtn">Listen to all</button></div>`;
+  html += `<div class="cat-list">`;
+  items.forEach((item, i) => {
+    html += `<div class="cat-item"><span class="cat-num">${i+1}</span><div><h4>${escapeHtml(item.headline)}</h4><p>${escapeHtml(item.summary)}</p></div></div>`;
+  });
+  html += `</div>`;
+
+  catContent.innerHTML = html;
+
+  const spokenText = items.map((it, i) => `Story ${i+1}. ${it.headline}. ${it.summary}`).join(' ');
+  const catAudioBtn = document.getElementById('catAudioBtn');
+  if(catAudioBtn){
+    catAudioBtn.addEventListener('click', () => toggleSpeak(spokenText, catAudioBtn, 'Listen to all'));
+  }
+  const refreshBtn = document.getElementById('catRefresh');
+  if(refreshBtn){
+    refreshBtn.addEventListener('click', () => loadCategory(catKey, true));
+  }
+}
+
+async function loadCategory(catKey, forceRefresh){
+  const meta = CATEGORIES[catKey];
+  clearCatError();
+  stopSpeaking();
+
+  if(!forceRefresh && categoryCache[catKey] && categoryCache[catKey].date === todayKey()){
+    renderCategory(catKey, categoryCache[catKey].items);
+    return;
+  }
+
+  catContent.innerHTML = '';
+  catMeter.classList.add('active');
+  setCatStage(20, 'Finding today\'s stories…');
+
+  try{
+    const stageTimer = setTimeout(()=> setCatStage(60, 'Simplifying the headlines…'), 1400);
+
+    const response = await fetch(`${BACKEND_URL}/api/category`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: catKey, forceRefresh: !!forceRefresh })
+    });
+
+    clearTimeout(stageTimer);
+
+    if(!response.ok){
+      const errBody = await response.json().catch(()=>({}));
+      throw new Error(errBody.error || ('Request failed (' + response.status + ')'));
+    }
+
+    const data = await response.json();
+    let items = (data.data || []).filter(it => it && it.headline && it.summary).slice(0,5);
+
+    if(!items.length){
+      throw new Error('No stories came back. Try again in a moment.');
+    }
+
+    categoryCache[catKey] = { date: todayKey(), items: items };
+    setCatStage(100, 'Done!');
+    setTimeout(()=>{
+      catMeter.classList.remove('active');
+      renderCategory(catKey, items);
+    }, 250);
+
+  }catch(err){
+    catMeter.classList.remove('active');
+    showCatError('Could not load these stories. ' + (err.message || 'Please try again.'));
+  }
+}
+
+catTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    catTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeCatKey = tab.dataset.cat;
+    loadCategory(activeCatKey, false);
+  });
+});
+
+</script>
+</body>
+</html>
